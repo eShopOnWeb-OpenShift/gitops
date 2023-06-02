@@ -15,11 +15,11 @@ spec:
       parameters:
       - name: masterKey
         value: my-secret-value
-      - name: openshift-dns-zone
+      - name: openshiftDnsZone
         value: apps.ocp.tld
-      - name: github-client-id
+      - name: githubClientId
         value: redacted
-      - name: github-client-secret
+      - name: githubClientSecret
         value: redacted
   project: default
   syncPolicy:
