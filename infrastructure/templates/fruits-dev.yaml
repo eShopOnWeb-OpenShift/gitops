@@ -1,0 +1,102 @@
+apiVersion: project.openshift.io/v1
+kind: Project
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    openshift.io/description: ""
+    openshift.io/display-name: ""
+  labels:
+    kubernetes.io/metadata.name: fruits-dev
+  name: fruits-dev
+spec:
+  finalizers:
+  - kubernetes
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  name: cosign-hook
+  namespace: fruits-dev
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  name: cosign-hook
+  namespace: fruits-dev
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+subjects:
+- kind: ServiceAccount
+  name: cosign-hook
+  namespace: fruits-dev
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  name: cosign-hook
+  namespace: fruits-dev
+data:
+  cosign.sh: |
+    #!/bin/bash
+
+    set -Eeuo pipefail
+
+    mkdir -p /tmp/bin
+    curl -sfLo /tmp/bin/cosign https://github.com/sigstore/cosign/releases/download/v2.0.2/cosign-linux-amd64
+    chmod 755 /tmp/bin/cosign
+    export PATH="/tmp/bin:$PATH"
+
+    if ! oc get secret code-signature -n fruits-dev &>/dev/null; then
+      echo "========================================================================"
+      echo " Generating a keypair"
+      echo "========================================================================"
+      echo
+      cosign generate-key-pair --kms k8s://fruits-dev/code-signature
+    fi
+
+    exit 0
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  name: cosign-hook
+  namespace: fruits-dev
+spec:
+  backoffLimit: 30
+  template:
+    spec:
+      containers:
+      - name: hook
+        command:
+        - /entrypoint/cosign.sh
+        args: []
+        image: registry.redhat.io/openshift4/ose-cli:v4.13
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: USER
+          value: openshift
+        - name: HOME
+          value: /tmp
+        volumeMounts:
+        - mountPath: /entrypoint
+          name: cosign-hook
+          readOnly: true
+      serviceAccountName: cosign-hook
+      serviceAccount: cosign-hook
+      restartPolicy: OnFailure
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: cosign-hook
+        configMap:
+          name: cosign-hook
+          defaultMode: 0755
