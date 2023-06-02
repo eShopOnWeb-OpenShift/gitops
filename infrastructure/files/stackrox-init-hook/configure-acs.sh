@@ -15,11 +15,15 @@ echo "========================================================================"
 echo
 
 export ROX_CENTRAL_ADDRESS="$(oc get route central -n stackrox -o go-template='{{.spec.host}}'):443"
-export ROX_CENTRAL_HOSTNAME="$ROX_CENTRAL_ADDRESS"
 while ! curl -sfko /dev/null "https://$ROX_CENTRAL_ADDRESS/"; do
     echo "Red Hat ACS not ready..."
     sleep 5
+    
+    # There is a risk the central's route to be created after this script started
+    # so we need to periodically refresh it
+    export ROX_CENTRAL_ADDRESS="$(oc get route central -n stackrox -o go-template='{{.spec.host}}'):443"
 done
+export ROX_CENTRAL_HOSTNAME="$ROX_CENTRAL_ADDRESS"
 
 echo "========================================================================"
 echo " Retrieving an API Token for Red Hat ACS"

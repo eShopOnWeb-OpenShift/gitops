@@ -41,7 +41,7 @@ apiVersion: project.openshift.io/v1
 kind: Project
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: "15"
+    argocd.argoproj.io/sync-wave: "10"
     openshift.io/description: ""
     openshift.io/display-name: ""
   labels:
@@ -54,8 +54,10 @@ spec:
 apiVersion: v1
 kind: Secret
 metadata:
+  # The secret needs to be created before the creation of the "Central" Custom Resource.
+  # Otherwise, a race condition is possible and the installation of the Central might get stuck.
   annotations:
-    argocd.argoproj.io/sync-wave: "15"
+    argocd.argoproj.io/sync-wave: "10"
   name: central-admin
   namespace: stackrox
 type: Opaque
