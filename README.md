@@ -52,7 +52,6 @@ aws s3api put-bucket-policy --bucket mad-roadshow-france-2023-helm-charts --poli
             ],
             "Resource": [
                 "arn:aws:s3:::mad-roadshow-france-2023-helm-charts/*"
- 
             ]
         }
     ]
