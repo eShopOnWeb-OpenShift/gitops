@@ -66,8 +66,16 @@
         The JMESPath library is required by this playbook. 
         Please install the JMESPath library with 'pip install jmespath'.
 
-  # TODO: wait for the Central to be ready
- 
+  - name: Wait for the Central to be ready
+    uri:
+      url: 'https://{{ central_hostname }}'
+      validate_certs: '{{ validate_certs }}'
+    register: healthcheck
+    changed_when: false
+    until: healthcheck is succeeded
+    retries: 60
+    delay: 5
+
   - name: Find signature integrations
     uri:
       url: '{{ acs_api }}/signatureintegrations'
