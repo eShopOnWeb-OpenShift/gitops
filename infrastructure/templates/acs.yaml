@@ -167,7 +167,7 @@ data:
       export ROX_API_TOKEN=$(curl -s -k -u admin:$ROX_ADMIN_PASSWORD -H 'Content-Type: application/json' -X POST -d "$POLICY_JSON" "$APIURL" | jq -r '.token')
       oc create secret generic stackrox-api-token -n stackrox --from-literal=token="$ROX_API_TOKEN"
     else
-      export ROX_API_TOKEN="$(oc get secret stackrox-api-token -n stackrox -o go-template --template='{{.data.token|base64decode}}')"
+      export ROX_API_TOKEN="$(oc get secret stackrox-api-token -n stackrox -o go-template --template='{{ "{{" }}.data.token|base64decode}}')"
     fi
 
     echo "========================================================================"
