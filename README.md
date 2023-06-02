@@ -1,6 +1,6 @@
 # GitOps Artefacts for the MAD Roadshow France 2023
 
-## Pre-requisites
+## Deploy OpenShift resources with OpenShift GitOps
 
 * Install the OpenShift GitOps operator.
 
@@ -21,24 +21,45 @@ oc get route -n openshift-gitops openshift-gitops-server -o jsonpath='https://{.
   * Payload URL: *url above*
   * Content-Type: Application/json
 
-* Create the required namespaces.
+* Give cluster-admin access rights to the **OpenShift Gitops** operator.
 
 ```sh
-oc new-project fruits-dev
+oc adm policy add-cluster-role-to-user cluster-admin system:serviceaccount:openshift-gitops:openshift-gitops-argocd-application-controller
 ```
-
-* Label the `fruits-dev` namespace with argocd annotations
 
 ```sh
-oc label namespace fruits-dev argocd.argoproj.io/managed-by=openshift-gitops
+cp infrastructure.yaml.sample infrastructure.yaml
+oc apply -f infrastructure.yaml -n openshift-gitops
 ```
 
-* Give admin access rights on the **fruits-dev** namespace to the **OpenShift Gitops** operator.
+## Create the Helm repository
 
 ```sh
-oc adm policy add-role-to-user admin -n fruits-dev system:serviceaccount:openshift-gitops:openshift-gitops-argocd-application-controller
+sudo dnf install awscli2 rclone
+aws configure
+aws s3api list-buckets --output text
+aws s3api create-bucket --bucket mad-roadshow-france-2023-helm-charts --create-bucket-configuration LocationConstraint=eu-west-3 --region eu-west-3
+aws s3api put-public-access-block --bucket "mad-roadshow-france-2023-helm-charts" --public-access-block-configuration "BlockPublicPolicy=false"
+aws s3api put-bucket-policy --bucket mad-roadshow-france-2023-helm-charts --policy '{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "PublicReadGetObject",
+            "Effect": "Allow",
+            "Principal": "*",
+            "Action": [
+                "s3:GetObject"
+            ],
+            "Resource": [
+                "arn:aws:s3:::mad-roadshow-france-2023-helm-charts/*"
+ 
+            ]
+        }
+    ]
+}'
+rclone config
+rclone ls aws:mad-roadshow-france-2023-helm-charts
 ```
-
 
 ## Deploy Postgres CrunchyDB
 
