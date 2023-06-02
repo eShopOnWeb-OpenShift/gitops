@@ -21,6 +21,10 @@ spec:
         value: redacted
       - name: githubClientSecret
         value: redacted
+      - name: slackBotToken
+        value: redacted
+      - name: slackAppToken
+        value: redacted
   project: default
   syncPolicy:
     automated:

@@ -1,0 +1,29 @@
+apiVersion: project.openshift.io/v1
+kind: Project
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    openshift.io/description: ""
+    openshift.io/display-name: ""
+  labels:
+    kubernetes.io/metadata.name: fruits-prod
+  name: fruits-prod
+spec:
+  finalizers:
+  - kubernetes
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  name: tekton-is-admin
+  namespace: fruits-prod
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
+subjects:
+- kind: ServiceAccount
+  name: pipeline
+  namespace: fruits-dev

@@ -113,6 +113,51 @@ spec:
           defaultMode: 0755
 ---
 apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  name: slack-approval
+spec:
+  params:
+  - name: slackChannel
+    type: string
+  - name: slackSecretName
+    type: string
+  - name: pipelineId
+    type: string
+  steps:
+  - name: slack-approval
+    image: quay.io/madroadshowfrance2023/tekton-pipeline-slack-bot:latest
+    env:
+    - name: SLACK_CHANNEL
+      value: "$(params.slackChannel)"
+    - name: TEKTON_PIPELINE_ID
+      value: "$(params.pipelineId)"
+    - name: SLACK_BOT_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: $(params.slackSecretName)
+          key: "bot-token"
+    - name: SLACK_APP_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: $(params.slackSecretName)
+          key: "app-token"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  name: tekton-tokens
+  namespace: fruits-dev
+type: Opaque
+data:
+  bot-token: {{ .Values.slackBotToken | b64enc | quote }}
+  app-token: {{ .Values.slackAppToken | b64enc | quote }}
+---
+apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
   annotations:
@@ -182,14 +227,36 @@ spec:
       workspaces:
         - name: source
           workspace: workspace
-    - name: deploy
+    - name: deploy-in-test
       params:
         - name: SCRIPT
-          value: oc rollout status deploy/$(params.APP_NAME)
+          value: oc rollout status deploy/$(params.APP_NAME) -n test
       runAfter:
         - build
       taskRef:
         kind: ClusterTask
         name: openshift-client
+    - name: slack-approval
+      params:
+      - name: slackChannel
+        value: "#mad-roadshow-france-2023"
+      - name: slackSecretName
+        value: "tekton-tokens"
+      - name: pipelineId
+        value: "$(context.pipelineRun.name)"
+      runAfter:
+      - deploy-in-test
+      taskRef:
+        name: slack-approval
+    - name: deploy-in-prod
+      params:
+        - name: SCRIPT
+          value: oc rollout status deploy/$(params.APP_NAME) -n prod
+      runAfter:
+        - slack-approval
+      taskRef:
+        kind: ClusterTask
+        name: openshift-client
+
   workspaces:
     - name: workspace
