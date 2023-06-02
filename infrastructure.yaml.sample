@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mad-roadshow-france-2023
+  namespace: openshift-gitops
+spec:
+  destination:
+    name: ''
+    server: 'https://kubernetes.default.svc'
+  source:
+    path: infrastructure
+    repoURL: 'https://github.com/MAD-Roadshow-France-2023/gitops.git'
+    targetRevision: main
+    helm:
+      parameters:
+      - name: masterKey
+        value: my-secret-value
+      - name: openshift-dns-zone
+        value: apps.ocp.tld
+  project: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: false
+  ignoreDifferences:
+    - jqPathExpressions:
+        - .spec.template.spec.containers[].image
+      group: apps.openshift.io
+      kind: DeploymentConfig
+    - jqPathExpressions:
+        - .spec.tags[].generation
+      group: image.openshift.io
+      kind: ImageStream
