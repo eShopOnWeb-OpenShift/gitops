@@ -66,6 +66,8 @@
         The JMESPath library is required by this playbook. 
         Please install the JMESPath library with 'pip install jmespath'.
 
+  # TODO: wait for the Central to be ready
+
   - name: Find signature integrations
     uri:
       url: '{{ acs_api }}/signatureintegrations'

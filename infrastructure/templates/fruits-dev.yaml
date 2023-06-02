@@ -193,6 +193,3 @@ spec:
         name: openshift-client
   workspaces:
     - name: workspace
-      optional: false
-  resources: []
-  finally: []
