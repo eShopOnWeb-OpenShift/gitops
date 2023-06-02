@@ -17,6 +17,10 @@ spec:
         value: my-secret-value
       - name: openshift-dns-zone
         value: apps.ocp.tld
+      - name: github-client-id
+        value: redacted
+      - name: github-client-secret
+        value: redacted
   project: default
   syncPolicy:
     automated:
