@@ -67,6 +67,7 @@ kind: Central
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "15"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
   name: stackrox-central-services
   namespace: stackrox
 spec:
@@ -100,3 +101,158 @@ spec:
         replicas: 3
     scannerComponent: Enabled
 ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  name: stackrox-hook
+  namespace: stackrox
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  name: stackrox-hook
+  namespace: stackrox
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+subjects:
+- kind: ServiceAccount
+  name: stackrox-hook
+  namespace: stackrox
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  name: stackrox-hook
+  namespace: stackrox
+data:
+  configure-acs.sh: |
+    #!/bin/bash
+
+    set -Eeuo pipefail
+
+    mkdir -p /tmp/bin
+    curl -sfLo /tmp/bin/roxctl  https://mirror.openshift.com/pub/rhacs/assets/4.0.0/bin/Linux/roxctl
+    chmod 755 /tmp/bin/roxctl
+    curl -sLo /tmp/bin/jq https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
+    chmod 755 /tmp/bin/jq
+    export PATH="/tmp/bin:$PATH"
+
+    echo "========================================================================"
+    echo " Connecting to Red Hat ACS"
+    echo "========================================================================"
+    echo
+
+    export ROX_CENTRAL_ADDRESS="$(oc get route central -n stackrox -o go-template='{{.spec.host}}'):443"
+    export ROX_CENTRAL_HOSTNAME="$ROX_CENTRAL_ADDRESS"
+    while ! curl -sfko /dev/null "https://$ROX_CENTRAL_ADDRESS/"; do
+        echo "Red Hat ACS not ready..."
+        sleep 5
+    done
+
+    echo "========================================================================"
+    echo " Retrieving an API Token for Red Hat ACS"
+    echo "========================================================================"
+    echo
+    if ! oc get secret stackrox-api-token -n stackrox &>/dev/null; then
+      POLICY_JSON='{ "name": "init-token", "role":"Admin"}'
+      APIURL="https://$ROX_CENTRAL_ADDRESS/v1/apitokens/generate"
+      export ROX_API_TOKEN=$(curl -s -k -u admin:$ROX_ADMIN_PASSWORD -H 'Content-Type: application/json' -X POST -d "$POLICY_JSON" "$APIURL" | jq -r '.token')
+      oc create secret generic stackrox-api-token -n stackrox --from-literal=token="$ROX_API_TOKEN"
+    else
+      export ROX_API_TOKEN="$(oc get secret stackrox-api-token -n stackrox -o go-template --template='{{.data.token|base64decode}}')"
+    fi
+
+    echo "========================================================================"
+    echo " Generating the Cluster Init Bundle"
+    echo "========================================================================"
+    echo
+
+    if ! oc get secret admission-control-tls -n stackrox &>/dev/null; then
+      roxctl -e "$ROX_CENTRAL_ADDRESS" central init-bundles generate local-cluster --output-secrets /tmp/cluster_init_bundle.yaml
+      oc apply -f /tmp/cluster_init_bundle.yaml -n stackrox
+    fi
+
+    exit 0
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  name: stackrox-init-hook
+  namespace: stackrox
+spec:
+  backoffLimit: 30
+  template:
+    spec:
+      containers:
+      - name: hook
+        command:
+        - /entrypoint/configure-acs.sh
+        args: []
+        image: registry.redhat.io/openshift4/ose-cli:v4.13
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: ROX_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: central-admin
+              key: password
+        - name: USER
+          value: openshift
+        - name: HOME
+          value: /tmp
+        volumeMounts:
+        - mountPath: /entrypoint
+          name: stackrox-hook
+          readOnly: true
+      serviceAccountName: stackrox-hook
+      serviceAccount: stackrox-hook
+      restartPolicy: OnFailure
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: stackrox-hook
+        configMap:
+          name: stackrox-hook
+          defaultMode: 0755
+---
+apiVersion: platform.stackrox.io/v1alpha1
+kind: SecuredCluster
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+  name: stackrox-secured-cluster-services
+  namespace: stackrox
+spec:
+  auditLogs:
+    collection: Auto
+  admissionControl:
+    listenOnUpdates: true
+    bypass: BreakGlassAnnotation
+    contactImageScanners: ScanIfMissing
+    listenOnCreates: true
+    timeoutSeconds: 20
+    listenOnEvents: true
+  scanner:
+    analyzer:
+      scaling:
+        autoScaling: Enabled
+        maxReplicas: 5
+        minReplicas: 2
+        replicas: 3
+    scannerComponent: AutoSense
+  perNode:
+    collector:
+      collection: EBPF
+      imageFlavor: Regular
+    taintToleration: TolerateTaints
+  clusterName: local-cluster
