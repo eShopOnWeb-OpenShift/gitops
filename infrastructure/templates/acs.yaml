@@ -150,7 +150,7 @@ data:
     echo "========================================================================"
     echo
 
-    export ROX_CENTRAL_ADDRESS="$(oc get route central -n stackrox -o go-template='{{.spec.host}}'):443"
+    export ROX_CENTRAL_ADDRESS="$(oc get route central -n stackrox -o go-template='{{ "{{" }}.spec.host}}'):443"
     export ROX_CENTRAL_HOSTNAME="$ROX_CENTRAL_ADDRESS"
     while ! curl -sfko /dev/null "https://$ROX_CENTRAL_ADDRESS/"; do
         echo "Red Hat ACS not ready..."
