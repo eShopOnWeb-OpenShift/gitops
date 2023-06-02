@@ -74,5 +74,5 @@ metadata:
     che.eclipse.org/scm-server-endpoint: https://github.com
 type: Opaque
 stringData:
-  id: {{ .Value.github-client-id }}
-  secret: {{ .Value.github-client-secret }}
+  id: {{ .Values.github-client-id }}
+  secret: {{ .Values.github-client-secret }}
