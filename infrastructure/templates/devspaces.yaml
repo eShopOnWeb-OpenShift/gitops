@@ -44,6 +44,17 @@ spec:
       logLevel: INFO
     metrics:
       enable: true
+    pluginRegistry:
+      # Raising the CPU (and memory limits) because, on old hardware, the
+      # plugin registry is too slow to start and does not get a chance
+      # to start within the alloted time frame.
+      deployment:
+        containers:
+        - name: plugin-registry
+          resources:
+            limits:
+              cpu: '4'
+              memory: 8Gi
   containerRegistry: {}
   devEnvironments:
     startTimeoutSeconds: 300
@@ -56,7 +67,9 @@ spec:
       template: <username>-devspaces
     secondsOfInactivityBeforeIdling: 1800
     storage:
-      pvcStrategy: per-user
+      # Because our default storage class has it "volumeBindingMode" 
+      # set to "WaitForFirstConsumer", switching to ephemeral storage.
+      pvcStrategy: ephemeral
   gitServices: {}
   networking: {}
 ---
