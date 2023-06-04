@@ -1,0 +1,10 @@
+apiVersion: helm.openshift.io/v1beta1
+kind: HelmChartRepository
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  name: fruits-charts
+spec:
+  name: fruits-charts
+  connectionConfig:
+    url: https://mad-roadshow-france-2023-helm-charts.s3.eu-west-3.amazonaws.com

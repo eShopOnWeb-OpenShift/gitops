@@ -1,0 +1,59 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: fruits
+  labels:
+    app: fruits
+    app.kubernetes.io/component: fruits
+    app.kubernetes.io/instance: fruits
+    app.kubernetes.io/name: fruits
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      deployment: fruits
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        deployment: fruits
+    spec:
+      containers:
+        - resources: {}
+          terminationMessagePath: /dev/termination-log
+          name: fruits
+          env:
+{{ if eq .Values.db.deployment "vm" }}
+          - name: QUARKUS_DATASOURCE_USERNAME
+            value: appli
+          - name: QUARKUS_DATASOURCE_PASSWORD
+            value: secret
+          - name: QUARKUS_DATASOURCE_JDBC_URL
+            value: jdbc:postgresql://database:5432/appli
+          - name: QUARKUS_HIBERNATE_ORM_SQL_LOAD_SCRIPT
+            value: import-prod.sql
+{{ end }}
+{{ if eq .Values.db.deployment "operator" }}
+          - name: QUARKUS_HIBERNATE_ORM_SQL_LOAD_SCRIPT
+            value: import-test.sql
+{{ end }}
+          ports:
+            - containerPort: 8443
+              protocol: TCP
+            - containerPort: 8080
+              protocol: TCP
+          imagePullPolicy: Always
+          terminationMessagePolicy: File
+          image: image-registry.openshift-image-registry.svc:5000/fruits-dev/fruits:latest
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      securityContext: {}
+      schedulerName: default-scheduler
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 25%
+  revisionHistoryLimit: 10
+  progressDeadlineSeconds: 600

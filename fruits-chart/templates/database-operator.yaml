@@ -1,10 +1,11 @@
+{{ if eq .Values.db.deployment "operator" }}
 apiVersion: postgres-operator.crunchydata.com/v1beta1
 kind: PostgresCluster
 metadata:
   name: hippo
 spec:
-  image: registry.developers.crunchydata.com/crunchydata/crunchy-postgres:ubi8-15.2-0
-  postgresVersion: 15
+  image: registry.developers.crunchydata.com/crunchydata/crunchy-postgres:ubi8-14.7-0
+  postgresVersion: 14
   instances:
     - name: instance1
       dataVolumeClaimSpec:
@@ -25,3 +26,4 @@ spec:
             resources:
               requests:
                 storage: 1Gi
+{{ end }}

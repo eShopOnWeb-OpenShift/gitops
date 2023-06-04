@@ -58,14 +58,10 @@ aws s3api put-bucket-policy --bucket mad-roadshow-france-2023-helm-charts --poli
 }'
 rclone config
 rclone ls aws:mad-roadshow-france-2023-helm-charts
+mkdir -p /tmp/mad-roadshow-france-2023-helm-charts
+helm package -d /tmp/mad-roadshow-france-2023-helm-charts fruits-chart
+helm repo index --url "https://mad-roadshow-france-2023-helm-charts.s3.eu-west-3.amazonaws.com/" "/tmp/mad-roadshow-france-2023-helm-charts"
+rclone sync --delete-after /tmp/mad-roadshow-france-2023-helm-charts aws:mad-roadshow-france-2023-helm-charts
+rclone ls aws:mad-roadshow-france-2023-helm-charts
+curl https://mad-roadshow-france-2023-helm-charts.s3.eu-west-3.amazonaws.com/index.yaml
 ```
-
-## Deploy Postgres CrunchyDB
-
-1. Create a namespace ***preprod-database***
-2. Install the crunchyDB operator
-3. run oc apply -k kustomize/postgres
-
-More details here : https://access.crunchydata.com/documentation/postgres-operator/5.3.1/quickstart/
-
-

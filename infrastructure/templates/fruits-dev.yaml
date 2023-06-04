@@ -65,6 +65,38 @@ subjects:
   name: stackrox-hook
   namespace: stackrox
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  name: test-can-pull
+  namespace: fruits-dev
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:image-puller
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: fruits-test
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  name: prod-can-pull
+  namespace: fruits-dev
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:image-puller
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: fruits-prod
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -233,7 +265,7 @@ spec:
     - name: deploy-in-test
       params:
         - name: SCRIPT
-          value: oc rollout status deploy/$(params.APP_NAME) -n test
+          value: oc delete pods -l deployment=$(params.APP_NAME) -n fruits-test
       runAfter:
         - build
       taskRef:
@@ -254,7 +286,7 @@ spec:
     - name: deploy-in-prod
       params:
         - name: SCRIPT
-          value: oc rollout status deploy/$(params.APP_NAME) -n prod
+          value: oc delete pods -l deployment=$(params.APP_NAME) -n fruits-prod
       runAfter:
         - slack-approval
       taskRef:
@@ -263,3 +295,14 @@ spec:
 
   workspaces:
     - name: workspace
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  name: fruits
+  namespace: fruits-dev
+spec:
+  lookupPolicy:
+    local: false
