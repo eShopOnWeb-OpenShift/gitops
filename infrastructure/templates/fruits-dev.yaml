@@ -309,7 +309,7 @@ spec:
         - name: SCRIPT
           value: oc delete pods -l deployment=$(params.APP_NAME) -n fruits-test
       runAfter:
-        - cosign-signature
+        - cosign-sign
       taskRef:
         kind: ClusterTask
         name: openshift-client
