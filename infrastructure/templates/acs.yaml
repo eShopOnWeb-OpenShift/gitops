@@ -97,9 +97,7 @@ spec:
   scanner:
     analyzer:
       scaling:
-        autoScaling: Enabled
-        maxReplicas: 5
-        minReplicas: 2
+        autoScaling: Disabled
         replicas: 3
     scannerComponent: Enabled
 ---
@@ -287,3 +285,7 @@ spec:
         configMap:
           name: stackrox-configure-hook
           defaultMode: 0755
+---
+# TODO: 
+# - scale down the ACS operator
+# - patch the central route to Reencrypt

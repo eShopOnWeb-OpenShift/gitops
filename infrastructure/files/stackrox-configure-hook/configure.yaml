@@ -50,7 +50,7 @@
 
   - set_fact:
       cosign_public_key: '{{ cosign_secret.resources[0].data["cosign.pub"] | b64decode }}'
-  
+
   - name: Check if jmespath is available locally
     debug: msg={{ dummy|json_query('@') }}
     register: check_jmespath
@@ -185,7 +185,14 @@
         scope:
           - cluster:
             label:
-            namespace: dev
+              key: app
+              value: fruits
+            namespace: fruits-test
+          - cluster:
+            label:
+              key: app
+              value: fruits
+            namespace: fruits-prod
         severity: CRITICAL_SEVERITY
 
   - set_fact:
