@@ -179,6 +179,35 @@ spec:
           name: $(params.slackSecretName)
           key: "app-token"
 ---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+  name: cosign-sign
+  namespace: fruits-dev
+spec:
+  params:
+  - name: cosignKeyRef
+    type: string
+  - name: cosignKeyPassword
+    type: string
+  - name: image
+    type: string
+  steps:
+  - name: cosign
+    image: gcr.io/projectsigstore/cosign:v2.0.2
+    args:
+    - sign
+    - -y
+    - --upload=false
+    - --key=$(params.cosignKeyRef)
+    - $(params.image)
+    env:
+    - name: COSIGN_PASSWORD
+      value: "$(params.cosignKeyPassword)"
+---
 apiVersion: v1
 kind: Secret
 metadata:
@@ -218,7 +247,7 @@ spec:
       name: GIT_REVISION
       type: string
     - default: >-
-        image-registry.openshift-image-registry.svc:5000/fruits-dev/fruits
+        image-registry.openshift-image-registry.svc:5000/fruits-dev/fruits:latest
       name: IMAGE_NAME
       type: string
     - default: .
@@ -262,12 +291,25 @@ spec:
       workspaces:
         - name: source
           workspace: workspace
+    - name: cosign-sign
+      params:
+      - name: cosignKeyRef
+        value: k8s://fruits-dev/code-signature
+      - name: cosignKeyPassword
+        value: dummy
+      - name: image
+        value: $(params.IMAGE_NAME)
+      runAfter:
+        - build
+      taskRef:
+        kind: Task
+        name: cosign-sign
     - name: deploy-in-test
       params:
         - name: SCRIPT
           value: oc delete pods -l deployment=$(params.APP_NAME) -n fruits-test
       runAfter:
-        - build
+        - cosign-signature
       taskRef:
         kind: ClusterTask
         name: openshift-client
