@@ -201,7 +201,7 @@ spec:
     args:
     - sign
     - -y
-    - --upload=false
+    - --tlog-upload=false
     - --key=$(params.cosignKeyRef)
     - $(params.image)
     env:
