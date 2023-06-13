@@ -41,7 +41,7 @@
       api_version: v1
       kind: Secret
       name: code-signature
-      namespace: fruits-dev
+      namespace: eshop-dev
     register: cosign_secret
     failed_when: cosign_secret.resources|length == 0
     until: cosign_secret is succeeded
@@ -186,13 +186,23 @@
           - cluster:
             label:
               key: app
-              value: fruits
-            namespace: fruits-test
+              value: eshop-web
+            namespace: eshop-test
           - cluster:
             label:
               key: app
-              value: fruits
-            namespace: fruits-prod
+              value: eshop-api
+            namespace: eshop-test
+          - cluster:
+            label:
+              key: app
+              value: eshop-web
+            namespace: eshop-prod
+          - cluster:
+            label:
+              key: app
+              value: eshop-api
+            namespace: eshop-prod
         severity: CRITICAL_SEVERITY
 
   - set_fact:

@@ -7,7 +7,7 @@ curl -sfLo /tmp/bin/cosign https://github.com/sigstore/cosign/releases/download/
 chmod 755 /tmp/bin/cosign
 export PATH="/tmp/bin:$PATH"
 
-if ! oc get secret code-signature -n fruits-dev &>/dev/null; then
+if ! oc get secret code-signature -n eshop-dev &>/dev/null; then
     echo "========================================================================"
     echo " Generating a keypair"
     echo "========================================================================"
@@ -18,7 +18,7 @@ if ! oc get secret code-signature -n fruits-dev &>/dev/null; then
     # main.go:74: error during command execution: open cosign.pub: permission denied
     cd /tmp
 
-    COSIGN_PASSWORD=dummy cosign generate-key-pair k8s://fruits-dev/code-signature
+    COSIGN_PASSWORD=dummy cosign generate-key-pair k8s://eshop-dev/code-signature
 fi
 
 exit 0
