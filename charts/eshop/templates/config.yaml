@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: eshop-config
+type: Opaque
+stringData:
+  appsettings.json: |
+    {
+      "ConnectionStrings": {
+        "CatalogConnection": "Server={{ .Values.database.serverHostname }},1433;Integrated Security=False;Initial Catalog={{ .Values.database.name }};User Id={{ .Values.database.username }};Password={{ .Values.database.password }};Trusted_Connection=false;Encrypt=false",
+        "IdentityConnection": "Server={{ .Values.database.serverHostname }},1433;Integrated Security=False;Initial Catalog={{ .Values.database.name }};User Id={{ .Values.database.username }};Password={{ .Values.database.password }};Trusted_Connection=false;Encrypt=false"
+      },
+      "baseUrls": {
+        "apiBase": "https://{{ .Values.ingress.apiHostname }}/api/",
+        "webBase": "https://{{ .Values.ingress.webHostname }}/"
+      },
+      "Logging": {
+        "LogLevel": {
+          "Default": "Information",
+          "Microsoft": "Warning",
+          "Microsoft.Hosting.Lifetime": "Information"
+        }
+      }
+    }

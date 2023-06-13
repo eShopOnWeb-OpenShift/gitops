@@ -1,0 +1,173 @@
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  annotations:
+    app.openshift.io/vcs-uri: https://github.com/nmasse-itix/eShopOnWeb.git
+  labels:
+    app: eshop
+    app.kubernetes.io/component: eshop-web
+    app.kubernetes.io/instance: eshop-web
+    app.kubernetes.io/name: eshop-web
+    app.kubernetes.io/part-of: eshop
+    app.openshift.io/runtime: dotnet
+    app.openshift.io/runtime-version: 7.0-ubi8
+  name: eshop-web
+spec:
+  lookupPolicy:
+    local: false
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  annotations:
+    app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"sql-server"}]'
+    app.openshift.io/vcs-uri: https://github.com/nmasse-itix/eShopOnWeb.git
+  labels:
+    app: eshop-web
+    app.kubernetes.io/component: eshop-web
+    app.kubernetes.io/instance: eshop-web
+    app.kubernetes.io/name: eshop-web
+    app.kubernetes.io/part-of: eshop
+    app.openshift.io/runtime: dotnet
+    app.openshift.io/runtime-version: 7.0-ubi8
+  name: eshop-web
+spec:
+  failedBuildsHistoryLimit: 5
+  nodeSelector: null
+  output:
+    to:
+      kind: ImageStreamTag
+      name: eshop-web:latest
+  postCommit: {}
+  resources: {}
+  runPolicy: Serial
+  source:
+    contextDir: /
+    git:
+      uri: https://github.com/nmasse-itix/eShopOnWeb.git
+    type: Git
+  strategy:
+    sourceStrategy:
+      env:
+      - name: DOTNET_STARTUP_PROJECT
+        value: src/Web/Web.csproj
+      from:
+        kind: ImageStreamTag
+        name: dotnet:7.0-ubi8
+        namespace: openshift
+    type: Source
+  successfulBuildsHistoryLimit: 5
+  triggers:
+  - type: ConfigChange
+  - imageChange: {}
+    type: ImageChange
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    alpha.image.policy.openshift.io/resolve-names: '*'
+    app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"sql-server"}]'
+    app.openshift.io/route-disabled: "false"
+    app.openshift.io/vcs-uri: https://github.com/nmasse-itix/eShopOnWeb.git
+    image.openshift.io/triggers: '[{"from":{"kind":"ImageStreamTag","name":"eshop-web:latest"},"fieldPath":"spec.template.spec.containers[?(@.name==\"eshop-web\")].image","pause":"false"}]'
+  labels:
+    app: eshop
+    app.kubernetes.io/component: eshop-web
+    app.kubernetes.io/instance: eshop-web
+    app.kubernetes.io/name: eshop-web
+    app.kubernetes.io/part-of: eshop
+    app.openshift.io/runtime: dotnet
+    app.openshift.io/runtime-version: 7.0-ubi8
+  name: eshop-web
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: eshop-web
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: eshop-web
+        deployment: eshop-web
+    spec:
+      containers:
+      - image: eshop-web:latest
+        imagePullPolicy: IfNotPresent
+        name: eshop-web
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /opt/app-root/app/appsettings.json
+          name: config
+          subPath: appsettings.json
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: config
+        secret:
+          defaultMode: 420
+          secretName: eshop-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"sql-server"}]'
+  labels:
+    app: eshop
+    app.kubernetes.io/component: eshop-web
+    app.kubernetes.io/instance: eshop-web
+    app.kubernetes.io/name: eshop-web
+    app.kubernetes.io/part-of: eshop
+    app.openshift.io/runtime: dotnet
+    app.openshift.io/runtime-version: 7.0-ubi8
+  name: eshop-web
+spec:
+  ports:
+  - port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: eshop-web
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  annotations:
+    app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"sql-server"}]'
+  labels:
+    app: eshop
+    app.kubernetes.io/component: eshop-web
+    app.kubernetes.io/instance: eshop-web
+    app.kubernetes.io/name: eshop-web
+    app.kubernetes.io/part-of: eshop
+    app.openshift.io/runtime: dotnet
+    app.openshift.io/runtime-version: 7.0-ubi8
+  name: eshop-web
+spec:
+  host: {{ .Values.ingress.webHostname | quote }}
+  tls:
+    termination: edge
+  to:
+    kind: Service
+    name: eshop-web
+    weight: 100
+  wildcardPolicy: None

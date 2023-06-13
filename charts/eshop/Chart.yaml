@@ -1,0 +1,27 @@
+apiVersion: v2
+name: eshop
+type: application
+version: 1.0.0
+appVersion: 2.2.0
+description: A Helm chart to deploy eShopOnWeb
+keywords:
+- dotnet
+sources:
+- https://github.com/nmasse-itix/eShopOnWeb-gitops
+home: https://github.com/nmasse-itix/eShopOnWeb
+maintainers:
+- name: Nicolas Massé
+  email: nmasse@redhat.com
+  url: https://www.itix.fr/
+- name: Sébastien Lallemand
+  email: slallemand@redhat.com
+annotations:
+  charts.openshift.io/name: Microsoft eShopOnWeb ASP.NET Core Reference Application
+  charts.openshift.io/providerType: community
+  charts.openshift.io/supportedOpenShiftVersions: '>=4.13'
+  charts.openshift.io/testedOpenShiftVersion: '4.13'
+  charts.openshift.io/supportURL: https://github.com/nmasse-itix/eShopOnWeb-gitops/issues
+  charts.openshift.io/provider: Red Hat SSA France
+  charts.openshift.io/archs: x86_64
+icon: https://raw.githubusercontent.com/dotnet-architecture/eShopOnWeb/main/src/Web/wwwroot/images/brand.png
+kubeVersion: '>=1.25'

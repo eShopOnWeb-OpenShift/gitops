@@ -1,0 +1,9 @@
+database:
+  name: "eShop"
+  username: "eShop"
+  password: "R3dH4t1!"
+  schema: "eShop"
+  serverHostname: "sql-server"
+ingress:
+  webHostname: ""
+  apiHostname: ""

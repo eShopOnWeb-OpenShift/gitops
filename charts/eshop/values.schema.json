@@ -1,0 +1,79 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "database": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "title": "Database Name",
+                    "description": "Name of the database",
+                    "default": "eShop"
+                },
+                "username": {
+                    "title": "Username",
+                    "description": "Username to access the database",
+                    "type": "string",
+                    "default": "eShop"
+                },
+                "password": {
+                    "title": "Password",
+                    "description": "Password to access the database",
+                    "type": "string",
+                    "default": "R3dH4t1!"
+                },
+                "schema": {
+                    "title": "Schema Name",
+                    "type": "string",
+                    "description": "Name of the schema to create",
+                    "default": "eShop"
+                },
+                "serverHostname": {
+                    "title": "SQL Server hostname",
+                    "type": "string",
+                    "description": "Microsoft SQL Server hostname",
+                    "default": "sql-server"
+                }
+            },
+            "required": [
+                "name",
+                "password",
+                "schema",
+                "serverHostname",
+                "username"
+            ],
+            "title": "Database"
+        },
+        "ingress": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "webHostname": {
+                    "title": "Web Public Hostname",
+                    "type": "string",
+                    "minLength": 3,
+                    "description": "Public hostname on which the Web component will be reachable"
+                },
+                "apiHostname": {
+                    "title": "API Public Hostname",
+                    "type": "string",
+                    "minLength": 3,
+                    "description": "Public hostname on which the Web component will be reachable"
+                }
+            },
+            "required": [
+                "apiHostname",
+                "webHostname"
+            ],
+            "title": "Ingress"
+        }
+    },
+    "required": [
+        "database",
+        "ingress"
+    ],
+    "title": "eShopOnWeb Application"
+}
