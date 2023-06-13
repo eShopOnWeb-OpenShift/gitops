@@ -130,6 +130,6 @@ metadata:
     argocd.argoproj.io/sync-wave: "35"
   name: eshop-charts
 spec:
-  name: eshop-charts
+  name: eShop Helm Charts
   connectionConfig:
     url: http://helm-repository.eshop-infra.svc:8080
