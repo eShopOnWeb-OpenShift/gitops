@@ -84,7 +84,7 @@ kind: Deployment
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "30"
-    image.openshift.io/triggers: '[{"from":{"kind":"ImageStreamTag","name":"helm-repository"},"fieldPath":"spec.template.spec.containers[?(@.name==\"nginx\")].image", "paused": false}]'
+    image.openshift.io/triggers: '[{"from":{"kind":"ImageStreamTag","name":"helm-repository:latest"},"fieldPath":"spec.template.spec.containers[?(@.name==\"nginx\")].image", "paused": false}]'
   labels:
     app: helm-repository
   name: helm-repository
