@@ -1,10 +1,135 @@
+apiVersion: project.openshift.io/v1
+kind: Project
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    openshift.io/description: ""
+    openshift.io/display-name: ""
+  labels:
+    kubernetes.io/metadata.name: eshop-infra
+  name: eshop-infra
+spec:
+  finalizers:
+  - kubernetes
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  name: helm-repository
+  namespace: eshop-infra
+spec:
+  lookupPolicy:
+    local: false
+---
+kind: BuildConfig
+apiVersion: build.openshift.io/v1
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+    app.openshift.io/vcs-uri: 'https://github.com/nmasse-itix/eShopOnWeb-gitops.git'
+  name: helm-repository
+  namespace: eshop-infra
+  labels:
+    app: helm-repository
+    app.kubernetes.io/component: helm-repository
+    app.kubernetes.io/instance: helm-repository
+    app.kubernetes.io/name: helm-repository
+    app.kubernetes.io/part-of: helm-repository
+spec:
+  nodeSelector: null
+  output:
+    to:
+      kind: ImageStreamTag
+      name: 'helm-repository:latest'
+  resources: {}
+  successfulBuildsHistoryLimit: 1
+  failedBuildsHistoryLimit: 1
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Containerfile
+  source:
+    type: Git
+    git:
+      uri: 'https://github.com/nmasse-itix/eShopOnWeb-gitops.git'
+    contextDir: /charts
+  triggers:
+    - type: ConfigChange
+    - type: ImageChange
+  runPolicy: Serial
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  labels:
+    app: helm-repository
+  name: helm-repository
+  namespace: eshop-infra
+spec:
+  ports:
+  - port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: helm-repository
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+    image.openshift.io/triggers: '[{"from":{"kind":"ImageStreamTag","name":"helm-repository"},"fieldPath":"spec.template.spec.containers[?(@.name==\"nginx\")].image", "paused": false}]'
+  labels:
+    app: helm-repository
+  name: helm-repository
+  namespace: eshop-infra
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: helm-repository
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: helm-repository
+    spec:
+      containers:
+      - image: image-registry.openshift-image-registry.svc:5000/eshop-infra/helm-repository:latest
+        imagePullPolicy: Always
+        name: nginx
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+---
 apiVersion: helm.openshift.io/v1beta1
 kind: HelmChartRepository
 metadata:
   annotations:
-    argocd.argoproj.io/sync-wave: "20"
-  name: fruits-charts
+    argocd.argoproj.io/sync-wave: "35"
+  name: eshop-charts
 spec:
-  name: fruits-charts
+  name: eshop-charts
   connectionConfig:
-    url: https://mad-roadshow-france-2023-helm-charts.s3.eu-west-3.amazonaws.com
+    url: http://helm-repository.eshop-infra.svc:8080

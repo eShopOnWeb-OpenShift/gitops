@@ -6,8 +6,8 @@ metadata:
     openshift.io/description: ""
     openshift.io/display-name: ""
   labels:
-    kubernetes.io/metadata.name: fruits-test
-  name: fruits-test
+    kubernetes.io/metadata.name: eshop-test
+  name: eshop-test
 spec:
   finalizers:
   - kubernetes
@@ -18,7 +18,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "20"
   name: tekton-is-admin
-  namespace: fruits-test
+  namespace: eshop-test
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -26,4 +26,4 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: pipeline
-  namespace: fruits-dev
+  namespace: eshop-dev

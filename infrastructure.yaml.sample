@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: mad-roadshow-france-2023
+  name: eshop
   namespace: openshift-gitops
 spec:
   destination:
@@ -9,7 +9,7 @@ spec:
     server: 'https://kubernetes.default.svc'
   source:
     path: infrastructure
-    repoURL: 'https://github.com/MAD-Roadshow-France-2023/gitops.git'
+    repoURL: 'https://github.com/nmasse-itix/eShopOnWeb-gitops.git'
     targetRevision: main
     helm:
       parameters:
