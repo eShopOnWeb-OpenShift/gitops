@@ -1,3 +1,4 @@
+{{ if false }}
 apiVersion: project.openshift.io/v1
 kind: Project
 metadata:
@@ -27,3 +28,4 @@ subjects:
 - kind: ServiceAccount
   name: pipeline
   namespace: eshop-dev
+{{ end }}
