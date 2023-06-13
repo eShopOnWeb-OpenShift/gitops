@@ -236,7 +236,8 @@ spec:
   admissionControl:
     listenOnUpdates: true
     bypass: BreakGlassAnnotation
-    contactImageScanners: ScanIfMissing
+    # Temporarily disable this feature
+    contactImageScanners: DoNotScanInline # ScanIfMissing
     listenOnCreates: true
     timeoutSeconds: 20
     listenOnEvents: true
