@@ -1,0 +1,20 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: sql-server
+  labels:
+    app: eshop
+    app.kubernetes.io/component: sql-server
+    app.kubernetes.io/instance: sql-server
+    app.kubernetes.io/name: sql-server
+    app.kubernetes.io/part-of: eshop
+spec:
+  ports:
+  - name: sql
+    protocol: TCP
+    port: 1433
+    targetPort: 1433
+  type: ClusterIP
+  sessionAffinity: None
+  selector:
+    app: sql-server

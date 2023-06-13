@@ -1,3 +1,4 @@
+# BEWARE! Password complexity rules are enforced by SQL Server!
 saPassword: "R3dH4t1!"
 database:
   name: "eShop"

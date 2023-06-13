@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sql-server
+  labels:
+    app: eshop
+    app.kubernetes.io/component: sql-server
+    app.kubernetes.io/instance: sql-server
+    app.kubernetes.io/name: sql-server
+    app.kubernetes.io/part-of: eshop
+spec:
+  selector:
+    matchLabels:
+      app: sql-server
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: sql-server
+    spec:
+      containers:
+      - name: sql-server
+        image: mcr.microsoft.com/mssql/rhel/server:2019-latest
+        imagePullPolicy: "Always"
+        readinessProbe:
+          tcpSocket:
+            port: 1433
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 1433
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        ports:
+        - containerPort: 1433
+        volumeMounts:
+        - mountPath: /var/opt/mssql
+          name: database
+        env:
+        - name: MSSQL_PID
+          value: "Developer"
+        - name: ACCEPT_EULA
+          value: "Y"
+        - name: MSSQL_SA_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: sql-server-seed
+              key: sa-password
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      securityContext: {}
+      schedulerName: default-scheduler
+      serviceAccountName: sql-server
+      serviceAccount: sql-server
+      volumes:
+      - name: database
+        persistentVolumeClaim:
+          claimName: sql-server

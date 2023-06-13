@@ -1,0 +1,65 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sql-server-init-hook
+data:
+{{ (.Files.Glob "files/init-hook/*").AsConfig | indent 2 }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sql-server-init-hook
+spec:
+  backoffLimit: 30
+  template:
+    spec:
+      containers:
+      - name: hook
+        command:
+        - /entrypoint/configure-sql-server.sh
+        args: []
+        image: quay.io/redhat_sa_france/sql-server-2019-cli:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: SA_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: sql-server-seed
+              key: sa-password
+        - name: SQLSERVER_HOSTNAME
+          value: "sql-server"
+        - name: DATABASE_NAME
+          valueFrom:
+            secretKeyRef:
+              name: sql-server-seed
+              key: database-name
+        - name: SCHEMA_NAME
+          valueFrom:
+            secretKeyRef:
+              name: sql-server-seed
+              key: schema-name
+        - name: DATABASE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: sql-server-seed
+              key: database-username
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: sql-server-seed
+              key: database-password
+        - name: USER
+          value: openshift
+        - name: HOME
+          value: /tmp
+        volumeMounts:
+        - mountPath: /entrypoint
+          name: script
+          readOnly: true
+      restartPolicy: OnFailure
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: script
+        configMap:
+          name: sql-server-init-hook
+          defaultMode: 0755
