@@ -1,0 +1,7 @@
+saPassword: "R3dH4t1!"
+database:
+  name: "eShop"
+  owner:
+    username: "eShop"
+    password: "R3dH4t1!"
+  schema: "eShop"

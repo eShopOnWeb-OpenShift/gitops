@@ -1,0 +1,12 @@
+FROM quay.io/fedora/fedora:38
+
+# Unattended installation
+ADD install-sqlcmd /usr/local/bin/install-sqlcmd
+
+RUN dnf install -y expect \
+ && curl -sSfL https://packages.microsoft.com/config/rhel/8/prod.repo -o /etc/yum.repos.d/msprod.repo \
+ && /usr/local/bin/install-sqlcmd \
+ && dnf clean all
+
+ENTRYPOINT [ "/opt/mssql-tools/bin/sqlcmd" ]
+CMD [ ]

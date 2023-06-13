@@ -1,0 +1,8 @@
+#!/usr/bin/expect -f
+
+spawn dnf install -y mssql-tools unixODBC-devel
+expect "Do you accept the license terms? (Enter YES or NO)\n"
+send -- "YES\n"
+expect "Do you accept the license terms? (Enter YES or NO)\n"
+send -- "YES\n"
+expect eof

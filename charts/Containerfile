@@ -1,0 +1,12 @@
+FROM docker.io/nginxinc/nginx-unprivileged:1.25-alpine
+
+ADD . /usr/src/helm-charts
+
+USER 0
+
+RUN curl -sSfL https://get.helm.sh/helm-v3.12.0-linux-amd64.tar.gz | tar -zxv -C /usr/local/bin --strip-components=1 \
+ && mkdir -p /tmp/helm-repository \
+ && for chart in /usr/src/helm-charts/*/; do helm package -d /usr/share/nginx/html "$chart"; done \
+ && helm repo index --url "http://helm-charts.fruits-dev.svc:8080/" /usr/share/nginx/html
+
+USER 101
