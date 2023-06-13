@@ -1,0 +1,67 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "saPassword": {
+            "type": "string",
+            "description": "SQL Server Administrator Password",
+            "title": "Administrator Password",
+            "default": "R3dH4t1!"
+        },
+        "database": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "title": "Database Name",
+                    "description": "Name of the database to create",
+                    "default": "eShop"
+                },
+                "owner": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "username": {
+                            "title": "Username",
+                            "description": "Username to access the database",
+                            "type": "string",
+                            "default": "eShop"
+                        },
+                        "password": {
+                            "title": "Password",
+                            "description": "Password to access the database",
+                            "type": "string",
+                            "default": "R3dH4t1!"
+                        }
+                    },
+                    "required": [
+                        "password",
+                        "username"
+                    ],
+                    "title": "Database Owner",
+                    "description": "Credentials of the database owner"
+                },
+                "schema": {
+                    "title": "Schema Name",
+                    "type": "string",
+                    "description": "Name of the schema to create",
+                    "default": "eShop"
+                }
+            },
+            "required": [
+                "name",
+                "owner",
+                "schema"
+            ],
+            "title": "Database",
+            "description": "Database creation"
+        }
+    },
+    "required": [
+        "database",
+        "saPassword"
+    ],
+    "title": "Microsoft SQL Server 2019"
+}

@@ -1,5 +1,32 @@
 FROM docker.io/nginxinc/nginx-unprivileged:1.25-alpine
 
+##
+## Development instructions
+##
+#
+# Build the container image and push it to Quay.io:
+#
+#   podman build -t quay.io/nmasse_itix/eshop_charts:latest .
+#   podman push quay.io/nmasse_itix/eshop_charts:latest
+#
+# Deploy it to OpenShift:
+#
+#   oc new-project eshop-infra
+#   oc create deploy helm-repository --image=quay.io/nmasse_itix/eshop_charts:latest --port=8080
+#   oc expose deploy/helm-repository --name helm-repository
+#
+# And then create the HelmChartRepository object:
+#
+#   apiVersion: helm.openshift.io/v1beta1
+#   kind: HelmChartRepository
+#   metadata:
+#     name: eshop-charts
+#   spec:
+#     connectionConfig:
+#       url: http://helm-repository.eshop-infra.svc:8080
+#     name: eShop Charts
+#
+
 ADD . /usr/src/helm-charts
 
 USER 0
@@ -7,6 +34,6 @@ USER 0
 RUN curl -sSfL https://get.helm.sh/helm-v3.12.0-linux-amd64.tar.gz | tar -zxv -C /usr/local/bin --strip-components=1 \
  && mkdir -p /tmp/helm-repository \
  && for chart in /usr/src/helm-charts/*/; do helm package -d /usr/share/nginx/html "$chart"; done \
- && helm repo index --url "http://helm-charts.fruits-dev.svc:8080/" /usr/share/nginx/html
+ && helm repo index --url "http://helm-repository.eshop-infra.svc:8080/" /usr/share/nginx/html
 
 USER 101

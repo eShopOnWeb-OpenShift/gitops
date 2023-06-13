@@ -3,3 +3,7 @@ name: sql-server-2019
 type: application
 version: 0.0.1
 appVersion: "0.0.1"
+description: A Helm chart to deploy Microsoft SQL Server 2019
+keywords:
+- mssql
+- database
