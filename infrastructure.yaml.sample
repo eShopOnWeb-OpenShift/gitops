@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: eshop
+  name: eshoponweb
   namespace: openshift-gitops
 spec:
   destination:
@@ -9,7 +9,7 @@ spec:
     server: 'https://kubernetes.default.svc'
   source:
     path: infrastructure
-    repoURL: 'https://github.com/nmasse-itix/eShopOnWeb-gitops.git'
+    repoURL: 'https://github.com/eShopOnWeb-OpenShift/gitops.git'
     targetRevision: main
     helm:
       parameters:

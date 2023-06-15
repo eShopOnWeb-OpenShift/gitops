@@ -1,6 +1,6 @@
 # eShopOnWeb Helm Chart
 
-A Helm chart for deploying [eShopOnWeb](https://github.com/nmasse-itix/eShopOnWeb) on OpenShift.
+A Helm chart for deploying [eShopOnWeb](https://github.com/eShopOnWeb-OpenShift/eShopOnWeb) on OpenShift.
 
 ## Pre-requisites
 

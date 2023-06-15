@@ -8,8 +8,8 @@ keywords:
 - mssql
 - database
 sources:
-- https://github.com/nmasse-itix/eShopOnWeb-gitops
-home: https://github.com/nmasse-itix/eShopOnWeb-gitops
+- https://github.com/eShopOnWeb-OpenShift/gitops
+home: https://github.com/eShopOnWeb-OpenShift
 maintainers:
 - name: Nicolas Massé
   email: nmasse@redhat.com
@@ -21,7 +21,7 @@ annotations:
   charts.openshift.io/providerType: community
   charts.openshift.io/supportedOpenShiftVersions: '>=4.13'
   charts.openshift.io/testedOpenShiftVersion: '4.13'
-  charts.openshift.io/supportURL: https://github.com/nmasse-itix/eShopOnWeb-gitops/issues
+  charts.openshift.io/supportURL: https://github.com/eShopOnWeb-OpenShift/gitops/issues
   charts.openshift.io/provider: Red Hat SSA France
   charts.openshift.io/archs: x86_64
 # Taken from https://github.com/elastic/eui/issues/1516
