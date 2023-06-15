@@ -1,6 +1,5 @@
-{{ if false }}
-apiVersion: project.openshift.io/v1
-kind: Project
+apiVersion: v1
+kind: Namespace
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "0"
@@ -28,4 +27,3 @@ subjects:
 - kind: ServiceAccount
   name: pipeline
   namespace: eshop-dev
-{{ end }}

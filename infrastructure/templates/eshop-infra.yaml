@@ -1,5 +1,5 @@
-apiVersion: project.openshift.io/v1
-kind: Project
+apiVersion: v1
+kind: Namespace
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "0"
@@ -133,3 +133,109 @@ spec:
   name: eShop Helm Charts
   connectionConfig:
     url: http://helm-repository.eshop-infra.svc:8080
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  name: init-hook
+  namespace: eshop-infra
+---
+# The init-hook needs to be able to create a Secret in the stackrox namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  name: init-hook-can-admin
+  namespace: stackrox
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
+subjects:
+- kind: ServiceAccount
+  name: init-hook
+  namespace: eshop-infra
+---
+# The init-hook needs to be able to create a Secret in the eshop-dev namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  name: init-hook-can-admin
+  namespace: eshop-dev
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
+subjects:
+- kind: ServiceAccount
+  name: init-hook
+  namespace: eshop-infra
+---
+# The init-hook needs to be able to create a Secret in the eshop-infra namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  name: init-hook-can-admin
+  namespace: eshop-infra
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
+subjects:
+- kind: ServiceAccount
+  name: init-hook
+  namespace: eshop-infra
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  name: init-hook
+  namespace: eshop-infra
+data:
+{{ (.Files.Glob "files/init-hook/*").AsConfig | indent 2 }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  name: init-hook
+  namespace: eshop-infra
+spec:
+  backoffLimit: 30
+  template:
+    spec:
+      containers:
+      - name: hook
+        command:
+        - /entrypoint/init.sh
+        args: []
+        image: registry.redhat.io/openshift4/ose-cli:v4.13
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: USER
+          value: openshift
+        - name: HOME
+          value: /tmp
+        volumeMounts:
+        - mountPath: /entrypoint
+          name: init-hook
+          readOnly: true
+      serviceAccountName: init-hook
+      serviceAccount: init-hook
+      restartPolicy: OnFailure
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: init-hook
+        configMap:
+          name: init-hook
+          defaultMode: 0755

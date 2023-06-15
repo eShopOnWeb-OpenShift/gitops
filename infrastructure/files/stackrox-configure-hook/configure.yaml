@@ -41,7 +41,7 @@
       api_version: v1
       kind: Secret
       name: code-signature
-      namespace: eshop-dev
+      namespace: stackrox
     register: cosign_secret
     failed_when: cosign_secret.resources|length == 0
     until: cosign_secret is succeeded
@@ -75,6 +75,50 @@
     until: healthcheck is succeeded
     retries: 60
     delay: 5
+
+  - name: Get K8s secret
+    kubernetes.core.k8s_info:
+      api_version: v1
+      kind: Secret
+      name: stackrox-cicd-token
+      namespace: stackrox
+    register: cicd_token_secret
+
+  - name: Create the CI/CD API Token
+    uri:
+      url: '{{ acs_api }}/apitokens/generate'
+      method: POST
+      status_code: "200"
+      validate_certs: '{{ validate_certs }}'
+      url_username: admin
+      url_password: '{{ central_admin_password }}'
+      body: '{{ token_creation }}'
+      body_format: json
+      force_basic_auth: yes
+    register: create_apitoken_response
+    changed_when: create_apitoken_response.status == 200
+    when: cicd_token_secret.resources|length == 0
+    vars:
+      token_creation:
+        name: tekton-pipelines
+        role: Continuous Integration
+
+  - set_fact:
+      apitoken_value: '{{ create_apitoken_response.json.token }}'
+    when: cicd_token_secret.resources|length == 0
+    
+  - name: Create the K8s Secret
+    kubernetes.core.k8s:
+      state: present
+      definition:
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: stackrox-cicd-token
+          namespace: stackrox
+        stringData:
+          token: '{{ apitoken_value }}'
+    when: apitoken_value is defined
 
   - name: Find signature integrations
     uri:
@@ -183,16 +227,6 @@
         rationale: The container image MUST be digitally signed in order to prevent tampering.
         remediation: Use cosign to sign this image. See https://docs.sigstore.dev/cosign/signing_with_containers/
         scope:
-          - cluster:
-            label:
-              key: app
-              value: eshop-web
-            namespace: eshop-test
-          - cluster:
-            label:
-              key: app
-              value: eshop-api
-            namespace: eshop-test
           - cluster:
             label:
               key: app
