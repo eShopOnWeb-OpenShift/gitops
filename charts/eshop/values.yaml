@@ -7,3 +7,5 @@ database:
 ingress:
   webHostname: ""
   apiHostname: ""
+build:
+  enabled: true

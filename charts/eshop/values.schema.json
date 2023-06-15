@@ -69,11 +69,28 @@
                 "webHostname"
             ],
             "title": "Ingress"
+        },
+        "build": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "enabled": {
+                    "title": "Build enabled?",
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Build the eShopOnWeb application in this namespace?"
+                }
+            },
+            "required": [
+                "enabled"
+            ],
+            "title": "Build"
         }
     },
     "required": [
         "database",
-        "ingress"
+        "ingress",
+        "build"
     ],
     "title": "eShopOnWeb Application"
 }
