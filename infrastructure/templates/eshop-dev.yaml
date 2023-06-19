@@ -33,3 +33,242 @@ metadata:
 spec:
   lookupPolicy:
     local: false
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+  name: cosign-sign
+  namespace: eshop-dev
+spec:
+  params:
+  - name: cosignKeyRef
+    type: string
+  - name: cosignKeyPassword
+    type: string
+  - name: image
+    type: string
+  steps:
+  - name: cosign
+    image: gcr.io/projectsigstore/cosign:v2.0.2
+    args:
+    - sign
+    - -y
+    - --tlog-upload=false
+    - --key=$(params.cosignKeyRef)
+    - $(params.image)
+    env:
+    - name: COSIGN_PASSWORD
+      value: "$(params.cosignKeyPassword)"
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+  name: roxctl-image-check
+  namespace: eshop-dev
+spec:
+  params:
+  - description: >-
+      Secret containing the StackRox API token with CI permissions and the
+      address:port tuple for StackRox Central (example: rox.stackrox.io:443)
+    name: roxctlSecret
+    type: string
+  - description: Bypass Central's cache for the image and force a new pull from the Scanner
+    name: forcePull
+    type: string
+    default: "false"
+  - description: Image name (registry hostname + port + path)
+    name: imageName
+    type: string
+  - description: Image digest
+    name: imageDigest
+    type: string
+  results:
+    - description: Output of `roxctl image check`
+      name: check_output
+  steps:
+    - env:
+      - name: FORCE_PULL
+        value: $(params.forcePull)
+      - name: DIGEST
+        value: $(params.imageDigest)
+      - name: NAME
+        value: $(params.imageName)
+      - name: FORCE_PULL
+        value: $(params.forcePull)
+      - name: ROX_API_TOKEN
+        valueFrom:
+          secretKeyRef:
+            key: token
+            name: $(params.roxctlSecret)
+      - name: ROX_CENTRAL_ENDPOINT
+        valueFrom:
+          secretKeyRef:
+            key: endpoint
+            name: $(params.roxctlSecret)
+      image: quay.io/skopeo/stable:v1.5.2
+      name: roxctl-image-check
+      resources: {}
+      script: |
+        #!/bin/bash
+        set -Eeuo pipefail
+        curl -s -k -L -H "Authorization: Bearer $ROX_API_TOKEN" "https://$ROX_CENTRAL_ENDPOINT/api/cli/download/roxctl-linux" --output /tmp/roxctl  > /dev/null
+        chmod +x /tmp/roxctl
+        extra_args=""
+        if [ "${FORCE_PULL:-}" == "true" ]; then
+          extra_args="$extra_args --force"
+        fi
+        /tmp/roxctl image check --insecure-skip-tls-verify -e "$ROX_CENTRAL_ENDPOINT" --image "$NAME@$DIGEST" --send-notifications $extra_args
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+  name: eshoponweb-ci
+  namespace: eshop-dev
+spec:
+  params:
+    - default: 'https://github.com/eShopOnWeb-OpenShift/eShopOnWeb.git'
+      name: GIT_REPO
+      type: string
+    - default: main
+      name: GIT_REVISION
+      type: string
+    - name: IMAGE_NAME
+      type: string
+    - name: DOTNET_STARTUP_PROJECT
+      type: string
+  tasks:
+    - name: git-clone
+      params:
+        - name: url
+          value: $(params.GIT_REPO)
+        - name: revision
+          value: $(params.GIT_REVISION)
+        - name: subdirectory
+          value: ''
+        - name: deleteExisting
+          value: 'true'
+      taskRef:
+        kind: ClusterTask
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: workspace
+    - name: build
+      params:
+        - name: IMAGE
+          value: $(params.IMAGE_NAME)
+        - name: TLSVERIFY
+          value: 'false'
+        - name: PATH_CONTEXT
+          value: .
+        - name: VERSION
+          value: 7.0-ubi8
+        - name: ENV_VARS
+          value:
+          - DOTNET_STARTUP_PROJECT=$(params.DOTNET_STARTUP_PROJECT)
+      runAfter:
+        - git-clone
+      taskRef:
+        kind: ClusterTask
+        name: s2i-dotnet
+      workspaces:
+        - name: source
+          workspace: workspace
+    - name: roxctl-image-check
+      taskRef:
+        name: roxctl-image-check
+      runAfter:
+        - build
+      params:
+      - name: roxctlSecret
+        value: stackrox-cicd-token
+      - name: imageName
+        value: $(params.IMAGE_NAME)
+      - name: imageDigest
+        value: $(tasks.build.results.IMAGE_DIGEST)
+    - name: cosign-sign
+      params:
+      - name: cosignKeyRef
+        value: k8s://eshop-dev/code-signature
+      - name: cosignKeyPassword
+        value: dummy
+      - name: image
+        value: $(params.IMAGE_NAME)@$(tasks.build.results.IMAGE_DIGEST)
+      runAfter:
+        - roxctl-image-check
+      taskRef:
+        kind: Task
+        name: cosign-sign
+  workspaces:
+    - name: workspace
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+  name: eshoponweb-cd
+  namespace: eshop-dev
+spec:
+  params:
+    - name: IMAGESTREAM_NAME
+      type: string
+    - name: DEV_NAMESPACE
+      type: string
+      default: eshop-dev
+    - name: TEST_NAMESPACE
+      type: string
+      default: eshop-test
+    - name: PROD_NAMESPACE
+      type: string
+      default: eshop-prod
+    - name: APPLICATION_NAME
+      type: string
+    - name: IMAGE_DIGEST
+      type: string
+  tasks:
+    - name: roxctl-image-check
+      taskRef:
+        name: roxctl-image-check
+      params:
+      - name: roxctlSecret
+        value: stackrox-cicd-token
+      - name: imageName
+        value: image-registry.openshift-image-registry.svc:5000/$(params.DEV_NAMESPACE)/$(params.IMAGESTREAM_NAME)
+      - name: imageDigest
+        value: $(params.IMAGE_DIGEST)
+      - name: forcePull
+        value: "true"
+    - name: deploy-in-test
+      params:
+        - name: SCRIPT
+          value: |
+            oc tag $(params.DEV_NAMESPACE)/$(params.IMAGESTREAM_NAME)@$(params.IMAGE_DIGEST) $(params.TEST_NAMESPACE)/$(params.IMAGESTREAM_NAME):latest
+            oc set image deploy/$(params.APPLICATION_NAME) -n $(params.TEST_NAMESPACE) $(params.APPLICATION_NAME)=image-registry.openshift-image-registry.svc:5000/$(params.TEST_NAMESPACE)/$(params.IMAGESTREAM_NAME)@$(params.IMAGE_DIGEST)
+      runAfter:
+        - roxctl-image-check
+      taskRef:
+        kind: ClusterTask
+        name: openshift-client
+    - name: deploy-in-prod
+      params:
+        - name: SCRIPT
+          value: |
+            oc tag $(params.DEV_NAMESPACE)/$(params.IMAGESTREAM_NAME)@$(params.IMAGE_DIGEST) $(params.PROD_NAMESPACE)/$(params.IMAGESTREAM_NAME):latest
+            oc set image deploy/$(params.APPLICATION_NAME) -n $(params.PROD_NAMESPACE) $(params.APPLICATION_NAME)=image-registry.openshift-image-registry.svc:5000/$(params.PROD_NAMESPACE)/$(params.IMAGESTREAM_NAME)@$(params.IMAGE_DIGEST)
+      runAfter:
+        - deploy-in-test
+      taskRef:
+        kind: ClusterTask
+        name: openshift-client
+---
