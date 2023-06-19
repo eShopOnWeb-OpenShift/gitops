@@ -328,3 +328,27 @@ spec:
         configMap:
           name: stackrox-configure-hook
           defaultMode: 0755
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  name: stackrox-registry-reader
+  namespace: stackrox
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  name: stackrox-registry-reader
+  namespace: stackrox
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:image-puller
+subjects:
+- kind: ServiceAccount
+  name: stackrox-registry-reader
+  namespace: stackrox
