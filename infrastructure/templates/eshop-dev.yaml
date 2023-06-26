@@ -7,6 +7,8 @@ metadata:
     openshift.io/display-name: ""
   labels:
     kubernetes.io/metadata.name: eshop-dev
+    # Enable HTTPS on Tekton EventListeners
+    operator.tekton.dev/enable-annotation: disabled
   name: eshop-dev
 spec:
   finalizers:
@@ -131,7 +133,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "20"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-  name: eshoponweb-ci
+  name: eshop-ci
   namespace: eshop-dev
 spec:
   params:
@@ -217,7 +219,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "20"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-  name: eshoponweb-cd
+  name: eshop-cd
   namespace: eshop-dev
 spec:
   params:
@@ -272,3 +274,179 @@ spec:
         kind: ClusterTask
         name: openshift-client
 ---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+  name: eshoponweb
+  namespace: eshop-dev
+spec:
+  serviceAccountName: pipeline
+  triggers:
+    - triggerRef: eshop-web
+    - triggerRef: eshop-api
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: Trigger
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+  name: eshop-web
+  namespace: eshop-dev
+spec:
+  serviceAccountName: pipeline
+  interceptors:
+  - name: GitHub push events
+    ref:
+      name: "github"
+    params:
+      - name: "secretRef"
+        value:
+          secretName: github-webbook-secret
+          secretKey: secretToken
+      - name: "eventTypes"
+        value: ["push"]
+  - name: Filter on repository name
+    ref:
+      name: "cel"
+      kind: ClusterInterceptor
+      apiVersion: triggers.tekton.dev
+    params:
+    - name: filter
+      value: body.repository.full_name == 'eShopOnWeb-OpenShift/eShopOnWeb'
+  bindings:
+  - name: NAME
+    value: web
+  - name: GIT_REPO
+    value: $(body.repository.clone_url)
+  - name: GIT_REVISION
+    value: $(body.head_commit.id)
+  - name: IMAGE_NAME
+    value: image-registry.openshift-image-registry.svc:5000/eshop-dev/eshop-web
+  - name: DOTNET_STARTUP_PROJECT
+    value: src/Web/Web.csproj
+  template:
+    ref: eshoponweb
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: Trigger
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+  name: eshop-api
+  namespace: eshop-dev
+spec:
+  serviceAccountName: pipeline
+  interceptors:
+  - name: GitHub push events
+    ref:
+      name: "github"
+    params:
+      - name: "secretRef"
+        value:
+          secretName: github-webbook-secret
+          secretKey: secretToken
+      - name: "eventTypes"
+        value: ["push"]
+  - name: Filter on repository name
+    ref:
+      name: "cel"
+      kind: ClusterInterceptor
+      apiVersion: triggers.tekton.dev
+    params:
+    - name: filter
+      value: body.repository.full_name == 'eShopOnWeb-OpenShift/eShopOnWeb'
+  bindings:
+  - name: NAME
+    value: api
+  - name: GIT_REPO
+    value: $(body.repository.clone_url)
+  - name: GIT_REVISION
+    value: $(body.head_commit.id)
+  - name: IMAGE_NAME
+    value: image-registry.openshift-image-registry.svc:5000/eshop-dev/eshop-api
+  - name: DOTNET_STARTUP_PROJECT
+    value: src/PublicApi/PublicApi.csproj
+  template:
+    ref: eshoponweb
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  name: github-webbook-secret
+  namespace: eshop-dev
+type: Opaque
+data:
+  secretToken: {{ include "github-tekton-webhook-secret" . | b64enc | quote }}
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+  name: eshoponweb
+  namespace: eshop-dev
+spec:
+  params:
+  - name: NAME
+  - name: GIT_REPO
+  - name: GIT_REVISION
+  - name: IMAGE_NAME
+  - name: DOTNET_STARTUP_PROJECT
+  resourcetemplates:
+  - apiVersion: tekton.dev/v1beta1
+    kind: PipelineRun
+    metadata:
+      annotations:
+        argocd.argoproj.io/sync-options: Prune=false
+      generateName: eshop-ci-$(tt.params.NAME)-
+    spec:
+      serviceAccountName: pipeline
+      pipelineRef:
+        name: eshop-ci
+      params:
+      - name: GIT_REPO
+        value: $(tt.params.GIT_REPO)
+      - name: GIT_REVISION
+        value: $(tt.params.GIT_REVISION)
+      - name: IMAGE_NAME
+        value: $(tt.params.IMAGE_NAME)
+      - name: DOTNET_STARTUP_PROJECT
+        value: $(tt.params.DOTNET_STARTUP_PROJECT)
+      workspaces:
+      - name: workspace
+        volumeClaimTemplate:
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 5Gi
+---
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  name: el-eshoponweb
+  namespace: eshop-dev
+  labels:
+    app.kubernetes.io/managed-by: EventListener
+    app.kubernetes.io/part-of: Triggers
+    eventlistener: eshoponweb
+spec:
+  to:
+    kind: Service
+    name: el-eshoponweb
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  port:
+    targetPort: http-listener

@@ -31,3 +31,17 @@ oc adm policy add-cluster-role-to-user cluster-admin system:serviceaccount:opens
 cp infrastructure.yaml.sample infrastructure.yaml
 oc apply -f infrastructure.yaml -n openshift-gitops
 ```
+
+* Print the relevant information to create the webhook.
+
+```sh
+oc get route -n eshop-dev el-eshoponweb -o go-template='https://{{.spec.host}}/{{"\n"}}'
+oc get secret -n eshop-dev github-webbook-secret -o go-template --template='{{.data.secretToken|base64decode}}{{"\n"}}'
+```
+
+* Add a webhook on the **eShopOnWeb** GitHub repository.
+
+ * Payload URL: *url above*
+ * Content-Type: Application/json
+ * Secret: *secret printed above*
+
