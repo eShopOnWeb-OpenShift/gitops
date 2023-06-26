@@ -1,0 +1,20 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: eshop-cd-${NAME}-
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+  namespace: eshop-dev
+  labels:
+    tekton.dev/pipeline: eshop-cd
+spec:
+  params:
+    - name: IMAGESTREAM_NAME
+      value: '${IMAGESTREAM_NAME}'
+    - name: APPLICATION_NAME
+      value: ${APPLICATION_NAME}
+    - name: IMAGE_DIGEST
+      value: '${IMAGE_DIGEST}'
+  pipelineRef:
+    name: eshop-cd
+  serviceAccountName: pipeline

@@ -34,6 +34,16 @@ spec:
   lookupPolicy:
     local: false
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  name: pipelinerun-templates
+  namespace: eshop-dev
+data:
+{{ (.Files.Glob "files/pipelinerun-templates/*").AsConfig | indent 2 }}
+---
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
@@ -145,6 +155,8 @@ spec:
       type: string
     - name: DOTNET_STARTUP_PROJECT
       type: string
+    - name: COMPONENT_NAME
+      type: string
   tasks:
     - name: git-clone
       params:
@@ -208,8 +220,42 @@ spec:
       taskRef:
         kind: Task
         name: cosign-sign
+    - name: trigger-deploy
+      params:
+        - name: SCRIPT
+          value: |
+            set -Eeuo pipefail
+            export IMAGESTREAM_NAME="eshop-$(params.COMPONENT_NAME)"
+            export NAME="$(params.COMPONENT_NAME)"
+            export APPLICATION_NAME="eshop-$(params.COMPONENT_NAME)"
+            export IMAGE_DIGEST="$(tasks.build.results.IMAGE_DIGEST)"
+
+            # Since envsubst is not available in the openshift-cli container image,
+            # I'm using a poor man's substitute...
+            cp pipelinerun.yaml /tmp/pipelinerun.yaml
+            while read -r var; do
+              [ -z "${!var}" ] && { echo "${var} is empty or not set."; exit 1; }
+              value="${!var}"
+              sed -i -E "s/\\$\\{$var}/$value/g" /tmp/pipelinerun.yaml
+            done << EOF
+            IMAGESTREAM_NAME
+            NAME
+            APPLICATION_NAME
+            IMAGE_DIGEST
+            EOF
+
+            oc create -f /tmp/pipelinerun.yaml
+      runAfter:
+        - cosign-sign
+      taskRef:
+        kind: ClusterTask
+        name: openshift-client
+      workspaces:
+      - name: manifest-dir
+        workspace: pipelinerun-templates
   workspaces:
     - name: workspace
+    - name: pipelinerun-templates
 ---
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
@@ -316,7 +362,7 @@ spec:
     - name: filter
       value: body.repository.full_name == 'eShopOnWeb-OpenShift/eShopOnWeb'
   bindings:
-  - name: NAME
+  - name: COMPONENT_NAME
     value: web
   - name: GIT_REPO
     value: $(body.repository.clone_url)
@@ -359,7 +405,7 @@ spec:
     - name: filter
       value: body.repository.full_name == 'eShopOnWeb-OpenShift/eShopOnWeb'
   bindings:
-  - name: NAME
+  - name: COMPONENT_NAME
     value: api
   - name: GIT_REPO
     value: $(body.repository.clone_url)
@@ -393,7 +439,7 @@ metadata:
   namespace: eshop-dev
 spec:
   params:
-  - name: NAME
+  - name: COMPONENT_NAME
   - name: GIT_REPO
   - name: GIT_REVISION
   - name: IMAGE_NAME
@@ -404,12 +450,14 @@ spec:
     metadata:
       annotations:
         argocd.argoproj.io/sync-options: Prune=false
-      generateName: eshop-ci-$(tt.params.NAME)-
+      generateName: eshop-ci-$(tt.params.COMPONENT_NAME)-
     spec:
       serviceAccountName: pipeline
       pipelineRef:
         name: eshop-ci
       params:
+      - name: COMPONENT_NAME
+        value: $(tt.params.COMPONENT_NAME)
       - name: GIT_REPO
         value: $(tt.params.GIT_REPO)
       - name: GIT_REVISION
@@ -427,6 +475,9 @@ spec:
             resources:
               requests:
                 storage: 5Gi
+      - name: pipelinerun-templates
+        configmap:
+          name: pipelinerun-templates
 ---
 kind: Route
 apiVersion: route.openshift.io/v1
