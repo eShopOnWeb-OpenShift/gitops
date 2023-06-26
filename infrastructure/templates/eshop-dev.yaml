@@ -7,8 +7,6 @@ metadata:
     openshift.io/display-name: ""
   labels:
     kubernetes.io/metadata.name: eshop-dev
-    # Enable HTTPS on Tekton EventListeners
-    operator.tekton.dev/enable-annotation: disabled
   name: eshop-dev
 spec:
   finalizers:
