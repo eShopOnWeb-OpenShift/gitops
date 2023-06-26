@@ -41,7 +41,6 @@ oc get secret -n eshop-dev github-webbook-secret -o go-template --template='{{.d
 
 * Add a webhook on the **eShopOnWeb** GitHub repository.
 
- * Payload URL: *url above*
- * Content-Type: Application/json
- * Secret: *secret printed above*
-
+  * Payload URL: *url above*
+  * Content-Type: Application/json
+  * Secret: *secret printed above*
