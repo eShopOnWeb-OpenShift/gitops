@@ -118,7 +118,7 @@
           namespace: stackrox
         stringData:
           token: '{{ apitoken_value }}'
-          endpoint: '{{ central_hostname }}:443'
+          endpoint: '{{ central_hostname }}'
     when: apitoken_value is defined
 
   - name: Get secrets in the stackrox namespace
