@@ -127,6 +127,7 @@ spec:
       script: |
         #!/bin/bash
         set -Eeuo pipefail
+        set -x
         curl -s -k -L -H "Authorization: Bearer $ROX_API_TOKEN" "https://$ROX_CENTRAL_ENDPOINT/api/cli/download/roxctl-linux" --output /tmp/roxctl  > /dev/null
         chmod +x /tmp/roxctl
         extra_args=""
