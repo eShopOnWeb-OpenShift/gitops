@@ -51,7 +51,8 @@ spec:
       restartPolicy: Always
       terminationGracePeriodSeconds: 30
       dnsPolicy: ClusterFirst
-      securityContext: {}
+      securityContext: 
+        fsGroup: 10001
       schedulerName: default-scheduler
       serviceAccountName: sql-server
       serviceAccount: sql-server
